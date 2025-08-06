@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gold Catch Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #87cefa;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #game {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .track {
+      position: absolute;
+      width: 100%;
+      height: 80px;
+      border-top: 4px solid #654321;
+      border-bottom: 4px solid #654321;
+    }
+
+    .track:nth-child(1) { top: 20%; }
+    .track:nth-child(2) { top: 45%; }
+    .track:nth-child(3) { top: 70%; }
+
+    .wagon {
+      position: absolute;
+      top: 0;
+      width: 60px;
+      height: 60px;
+      font-size: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ccc;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #scoreDisplay, #timeDisplay, #message {
+      position: absolute;
+      top: 10px;
+      font-size: 20px;
+      color: #fff;
+      z-index: 10;
+    }
+    #scoreDisplay { right: 10px; }
+    #timeDisplay { left: 10px; }
+    #message {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 28px;
+      display: none;
+      text-align: center;
+    }
+
+    #signature {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 16px;
+      background-color: white;
+      color: black;
+      border-radius: 25px;
+      font-weight: bold;
+      font-size: 16px;
+      z-index: 40;
+      border: 2px solid black;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div class="track"></div>
+    <div class="track"></div>
+    <div class="track"></div>
+    <div id="scoreDisplay">Score: 0</div>
+    <div id="timeDisplay">Time: 60</div>
+    <div id="message"></div>
+    <div id="signature">ⓒ Efe Berk Ural</div>
+  </div>
+
+  <script>
+    const game = document.getElementById('game');
+    const tracks = document.querySelectorAll('.track');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const message = document.getElementById('message');
+
+    let score = 0;
+    let time = 60;
+    let wave = 1;
+    let gameInterval, spawnInterval;
+
+    const waveGoals = [150, 200, 300];
+    const speeds = [2, 3, 4];
+
+    function startWave() {
+      score = 0;
+      time = 60;
+      scoreDisplay.textContent = 'Score: 0';
+      timeDisplay.textContent = 'Time: 60';
+      message.style.display = 'none';
+
+      spawnInterval = setInterval(spawnWagon, 1000);
+      gameInterval = setInterval(() => {
+        time--;
+        if (time < 0) {
+          endWave(false);
+          return;
+        }
+        timeDisplay.textContent = 'Time: ' + time;
+      }, 1000);
+    }
+
+    function endWave(success) {
+      clearInterval(gameInterval);
+      clearInterval(spawnInterval);
+      const goal = waveGoals[wave - 1];
+      if (success || score >= goal) {
+        if (wave === 3) {
+          message.textContent = '🎉 Congratulations! You win!';
+        } else {
+          message.textContent = `🎉 Wave ${wave} complete! Next wave in 10s...`;
+          wave++;
+          setTimeout(startWave, 10000);
+        }
+      } else {
+        message.textContent = '💥 Game Over!';
+      }
+      message.style.display = 'block';
+    }
+
+    function spawnWagon() {
+      const trackIndex = Math.floor(Math.random() * 3);
+      const track = tracks[trackIndex];
+      const wagon = document.createElement('div');
+      wagon.className = 'wagon';
+
+      let content;
+      if (wave === 1) {
+        content = Math.random() < 0.33 ? '💣' : '💰';
+      } else if (wave === 2) {
+        content = Math.random() < 0.5 ? '💣' : '💰';
+      } else {
+        if (Math.random() < 0.5) {
+          content = '?'; // Kapalı vagon
+        } else {
+          content = Math.random() < 0.5 ? '💣' : '💰';
+        }
+      }
+      wagon.textContent = content;
+      wagon.style.top = track.offsetTop + 10 + 'px';
+      wagon.style.left = '-60px';
+
+      game.appendChild(wagon);
+
+      let left = -60;
+      const speed = speeds[wave - 1];
+      const interval = setInterval(() => {
+        if (!document.body.contains(wagon)) return clearInterval(interval);
+        left += speed;
+        wagon.style.left = left + 'px';
+        if (left > window.innerWidth) {
+          game.removeChild(wagon);
+          clearInterval(interval);
+        }
+      }, 16);
+
+      wagon.addEventListener('click', () => {
+        if (wagon.textContent === '💰') {
+          score += 10;
+        } else if (wagon.textContent === '💣') {
+          score -= 30;
+        } else if (wagon.textContent === '?') {
+          if (Math.random() < 0.5) {
+            score += 10;
+          } else {
+            score -= 30;
+          }
+        }
+        scoreDisplay.textContent = 'Score: ' + score;
+        if (score >= waveGoals[wave - 1]) {
+          endWave(true);
+        }
+        game.removeChild(wagon);
+        clearInterval(interval);
+      });
+    }
+
+    message.innerHTML = `💡 Click wagons with 💰 to gain points (+10)<br>💣 takes -30 points.<br>Reach the goal before time runs out!`;
+    message.style.display = 'block';
+    setTimeout(() => {
+      message.style.display = 'none';
+      startWave();
+    }, 10000);
+  </script>
+</body>
+</html>
